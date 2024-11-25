@@ -1,0 +1,141 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="css/normalize.css">
+    <title>Photopea</title>
+    <style>
+        body{
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        #photopea{
+            width: 100%;
+            height: calc(100vh);
+            border: none;
+        }
+    </style>
+  </head>  
+  <body>
+    <iframe id="photopea"></iframe>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" crossorigin="anonymous"></script>
+    <script src="https://js.puter.com/v2"></script>
+    <script>
+        let photopea;
+        let active_file;
+        let saved_document_name;
+        let opened_items;
+        let first_done = true;
+
+        // When photopea is opened with items from puter
+        puter.ui.onLaunchedWithItems(function(items){
+            opened_items = items;
+        })
+
+        $(document).ready(function () {
+            // Get the iframe element for photopea
+            photopea = document.getElementById("photopea");
+            
+            // JSON object to be sent to Photopea
+            var json = `
+            {
+                "environment": {
+                    "customIO"  : { 
+                        "open": "app.echoToOE({cmd: 'Open'});",
+                        "save": "app.echoToOE({cmd: 'Save', name: activeDocument.name});",
+                        "saveAsPSD": "app.echoToOE({cmd: 'Save', name: activeDocument.name});"
+                    }
+                }
+            }`;
+
+            // Construct the URL, add a random number to avoid caching and encode and append the JSON object
+            // Set the URL of the iframe
+            photopea.src = "https://www.photopea.com?rnd=" + Math.floor(Math.random() * 0xffffffff) + "#" + encodeURI(JSON.stringify(JSON.parse(json)));
+        })
+
+
+        window.addEventListener("message", async function (e) {
+            console.log('photopea -> puter:', e.data);
+
+            // Photopea sent us a ArrayBuffer, which means 'Save'
+            if(e.data instanceof ArrayBuffer){
+                // convert ArrayBuffer to Blob
+                let blob = new Blob([e.data]);
+                // save the file
+                // if the name is not path, show save dialog
+                if(!active_document_name.includes('/')){
+                    await puter.ui.showSaveFilePicker(blob, active_document_name);
+                }
+                // else write to the existing file
+                else{
+                    let res = await puter.fs.write(active_document_name, blob);
+                }
+            }
+            // The first 'done' command was sent by Photopea
+            else if(e.data === 'done' && first_done){
+                first_done = false;
+                // loop through the opened items
+                for(let item of opened_items){
+                    if(!item.is_dir){
+                        openFile(item);
+                    }
+                }
+            }
+            // The 'Open' command was sent by Photopea
+            else if(e.data?.cmd ==='Open'){
+                openFile(await puter.ui.showOpenFilePicker({
+                    accept: ['.psd', '.html']
+                }));
+            }
+            // The 'Save' command was sent by Photopea
+            else if(e.data?.cmd === 'Save'){
+                photopea.contentWindow.postMessage("console.log(activeDocument)","*");
+                // set the active document name to the saved document name
+                active_document_name = e.data.name;
+                // save the active document
+                photopea.contentWindow.postMessage(`activeDocument.saveToOE("${getExtension(active_document_name).toLowerCase()}")`,"*");
+            }
+        });
+
+        // Opens the file in photopea
+        async function openFile(file){
+            // if no file is selected, return
+            if(!file)
+                return;
+
+            // set the active file
+            active_file = file;
+
+            // read the file
+            let content = await active_file.read();
+
+            // send the file to photopea
+            photopea.contentWindow.postMessage(await content.arrayBuffer(), "*");
+
+            // if file has psd extension, remove it
+            let file_name = active_file.path;
+            if(getExtension(file_name).toLowerCase() === 'psd')
+                file_name = removeExtension(file_name);
+
+            // set the active document name to the file name inside photopea
+            photopea.contentWindow.postMessage(`activeDocument.name = "${file_name}"`,"*");
+        }
+
+        // removes the trailing extension from the file name
+        function removeExtension(filename){
+            return filename.split('.').slice(0, -1).join('.');
+        }
+
+        // gets the extension of the file
+        function getExtension(filename){
+            return filename.split('.').pop();
+        }
+
+        </script>    
+      
+    </body>
+</html>
