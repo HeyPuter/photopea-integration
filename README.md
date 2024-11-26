@@ -16,6 +16,8 @@
     <a href="https://twitter.com/HeyPuter">X (Twitter)</a>
 </p>
 
+<h3 align="center"><img width="800" style="border-radius:5px;" alt="screenshot" src="https://assets.puter.site/pp-screenshot.webp"></h3>
+
 <br/>
 <br/>
 
