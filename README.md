@@ -1,4 +1,4 @@
-<h3 align="center"><img width="150" alt="Puter.com, The Personal Cloud Computer: All your files, apps, and games in one place accessible from anywhere at any time." src="https://assets.puter.site/photopea.png?a=2"></h3>
+<h3 align="center"><img width="150" alt="Puter.com, The Personal Cloud Computer: All your files, apps, and games in one place accessible from anywhere at any time." src="https://assets.puter.site/photopea.png?a=3"></h3>
 
 <h3 align="center">Photopea Integration for Puter</h3>
 <p align="center">
