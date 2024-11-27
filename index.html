@@ -30,6 +30,7 @@
         let saved_document_name;
         let opened_items;
         let first_done = true;
+        let active_document_name;
 
         // When photopea is opened with items from puter
         puter.ui.onLaunchedWithItems(function(items){
@@ -45,6 +46,7 @@
             {
                 "environment": {
                     "customIO"  : { 
+                        "exportAs": true,
                         "open": "app.echoToOE({cmd: 'Open'});",
                         "save": "app.echoToOE({cmd: 'Save', name: activeDocument.name});",
                         "saveAsPSD": "app.echoToOE({cmd: 'Save', name: activeDocument.name});"
@@ -63,12 +65,26 @@
 
             // Photopea sent us a ArrayBuffer, which means 'Save'
             if(e.data instanceof ArrayBuffer){
+                let implied_extension;
+                // use the first byte to determine the file type
+                let type = new Uint8Array(e.data, 0, 1)[0];
+
+                // if the first byte is 0xFF, it is a jpeg file
+                if(type === 0xFF){
+                    implied_extension = '.jpg';
+                }
+                // if the first byte is 0x89, it is a png file
+                else if(type === 0x89){
+                    implied_extension = '.png';
+                }
+
                 // convert ArrayBuffer to Blob
                 let blob = new Blob([e.data]);
+
                 // save the file
                 // if the name is not path, show save dialog
-                if(!active_document_name.includes('/')){
-                    await puter.ui.showSaveFilePicker(blob, active_document_name);
+                if(!active_document_name || !active_document_name.includes('/')){
+                    await puter.ui.showSaveFilePicker(blob, active_document_name ?? 'Untitled' + implied_extension);
                 }
                 // else write to the existing file
                 else{
@@ -88,7 +104,7 @@
             // The 'Open' command was sent by Photopea
             else if(e.data?.cmd ==='Open'){
                 openFile(await puter.ui.showOpenFilePicker({
-                    accept: ['.psd', '.html']
+                    accept: ['.psd']
                 }));
             }
             // The 'Save' command was sent by Photopea
